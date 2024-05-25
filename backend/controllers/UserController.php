@@ -41,13 +41,9 @@
             $correo = $_POST['correo'];
             $usuario = $_POST['usuario'];
             $password = $_POST['password'];
-            $marca = $_POST['marca'];
-            $placas = $_POST['placas'];
-            $fecha_recoger = $_POST['fecha_recoger'];
-            $fecha_entrega = $_POST['fecha_entrega'];
 
 
-            $usuarioNuevo = new User($nombre, $apaterno, $amaterno, $direccion, $telefono, $correo, $usuario, $password, $marca, $placas, $fecha_recoger, $fecha_entrega);
+            $usuarioNuevo = new User($nombre, $apaterno, $amaterno, $direccion, $telefono, $correo, $usuario, $password);
 
             $resultado = $this->userService->registrarUsuario($usuarioNuevo);
 

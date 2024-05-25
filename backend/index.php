@@ -1,7 +1,11 @@
 <?php  // controllers/UserController.php
     require_once '../backend/controllers/UserController.php';
+    require_once '../backend/controllers/AutoController.php';
+    require_once '../backend/controllers/ReservaController.php';
 
     $userController = new UserController();
+    $autoController = new AutoController();
+    $reservaController = new ReservaController();
 
     switch ($_SERVER["REQUEST_METHOD"]) {
         case 'POST':
@@ -19,13 +23,23 @@
             } else if ($accion == 'actualizarUsuario') {
                 $idUser = $_POST['id'];
                 $userController->actualizarUsuario($idUser);
+            } else if ($accion == 'insertarReservacion') {
+                $reservaController->insertarReservacion();
+            } else if ($accion == 'actualizarEstadoAuto') {
+                $autoController->actualizarEstadoAuto();
+            } else if ($accion == 'actualizarEstadoReservacion') {
+                $reservaController->arctualizarEstadoReservacion();
             }
-
         break;
+        
         case 'GET': 
             $accion = $_GET['accion'];
             if ($accion == 'todos') {
                 $userController->obtenerTodosUsuarios();
+            } else if ($accion == 'autos') {
+                $autoController->obtenerTodosAutos();
+            } elseif ($accion == 'reservaciones') {
+                $reservaController->obtenerReservaciones();
             }
         break;
     }

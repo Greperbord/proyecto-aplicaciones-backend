@@ -1,6 +1,6 @@
 <?php
     class User {
-        private $id;
+        private $usu_id;
         private $nombre;
         private $apaterno;
         private $amaterno;
@@ -23,12 +23,12 @@
         }
 
         // Getters y Setters para cada una de las propiedades
-        public function getId() {
-            return $this->id;
+        public function getUsuId() {
+            return $this->usu_id;
         }
 
-        public function setId ($id) {
-            $this->id = $id;
+        public function setUsuId ($usu_id) {
+            $this->usu_id = $usu_id;
         }
 
         public function getNombre() {
@@ -95,4 +95,5 @@
             $this->password = $password;
         }
     }
+
 ?>
