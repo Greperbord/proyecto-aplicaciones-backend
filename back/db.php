@@ -3,7 +3,7 @@
 function Conectardb()
 {
     // Datos de conexión a la base de datos
-    $servername = "localhost:8889"; // Cambia esto si tu base de datos está en un servidor diferente
+    $servername = "localhost:8889"; 
     $username = "root";
     $password = "root";
     $dbname = "renta_carros";
@@ -19,149 +19,134 @@ function Conectardb()
     return $conn;
 }
 
-function Closedb()
+function Closedb($conn)
 {
-    $conn = Conectardb();
-    if ($conn->connect_error) {
-        die("Error al cerrar la conexión: " . mysqli_error($conn));
-    } else {
-        mysqli_close($conn);
-    }
+    $conn->close();
 }
 
-// $idcliente = $_SESSION["idcliente"];
+session_start();
 
-if(isset($_POST['id'])) {
- $id = $_POST['id'];
- $id_cliente = $_POST['id_cliente'];
- $id_auto = $_POST['id_auto'];
- $fecha_inicio = $_POST['fecha_inicio'];
- $fecha_fin = $_POST['fecha_fin'];
- $recoleccion = $_POST['recoleccion'];
- $devolucion = $_POST['devolucion'];
+$user_id = $_SESSION['user_id'];
 
-}
- $conn = Conectardb();
- 
-  switch ($_POST['Modulo']) {
-   case "Guardar":
-		$query = "SELECT * FROM reservas WHERE id = " . $id;
-		$result = mysqli_query($conn, $query);
-		$num_rows = $result->num_rows;
+$id = isset($_POST['id']) ? intval($_POST['id']) : null;
+$id_cliente = isset($_POST['id_cliente']) ? intval($_POST['id_cliente']) : null;
+$id_auto = isset($_POST['id_auto']) ? intval($_POST['id_auto']) : null;
+$fecha_inicio = isset($_POST['fecha_inicio']) ? $_POST['fecha_inicio'] : null;
+$fecha_fin = isset($_POST['fecha_fin']) ? $_POST['fecha_fin'] : null;
+$recoleccion = isset($_POST['recoleccion']) ? $_POST['recoleccion'] : null;
+$devolucion = isset($_POST['devolucion']) ? $_POST['devolucion'] : null;
+$pago = isset($_POST['pago']) ? floatval($_POST['pago']) : null;
+$modulo = isset($_POST['Modulo']) ? $_POST['Modulo'] : null;
 
-		if ($num_rows == 0) {
-		    // Consulta para insertar un nuevo instructor
-		    $sql = "INSERT INTO reservas (id, id_cliente, id_auto, fecha_inicio, fecha_fin, recoleccion, devolucion) VALUES (?, ?, ?, ?, ?, ?, ?)";
-		    $stmt = $conn->prepare($sql);
-		    $stmt->bind_param("iiissss", $id, $id_cliente, $id_auto, $fecha_inicio, $fecha_fin, $recoleccion, $devolucion);
+$conn = Conectardb();
 
-  		// Ejecutar la consulta preparada
-		if ($stmt->execute()) {
-		    echo json_encode( "Instructor agregado correctamente");
-		} else{
-			 echo json_encode( "error al agregar el instructor". mysqli_error($conn));
-		}
+switch ($modulo) {
+    case "Guardar":
+        $query = "SELECT * FROM reservas WHERE id = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $num_rows = $result->num_rows;
 
+        if ($num_rows == 0) {
+            $sql = "INSERT INTO reservas (id_cliente, id_auto, fecha_inicio, fecha_fin, recoleccion, devolucion, pago) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("iissssd", $id_cliente, $id_auto, $fecha_inicio, $fecha_fin, $recoleccion, $devolucion, $pago);
 
-		// Cerrar la consulta preparada
-		$stmt->close();
-		} else{
-			  echo json_encode( "El id del instructor ya existe en la base de datos por lo tanto no se agrego");
-		}
-
-		
-   break;
-  case "Editar":
-		$query = "SELECT * FROM reservas WHERE id = " . $id;
-		$result = mysqli_query($conn, $query);
-		$num_rows = $result->num_rows;
-
-		if ($num_rows >= 1) {
-		    // Consulta para actualizar un instructor existente
-		    $sql = "UPDATE clientes SET id = ?, id_cliente = ?, id_auto = ?, fecha_inicio = ?, fecha_fin = ?, recoleccion = ?, devolucion = ? WHERE id = ?";
-		    $stmt = $conn->prepare($sql);
-		    $stmt->bind_param("iiissss", $id, $id_cliente, $id_auto, $fecha_inicio, $fecha_fin, $recoleccion, $devolucion);
-
-         // Ejecutar la consulta preparada
-		  if ($stmt->execute()) {
-		   echo json_encode( "Instructor actualizado correctamente");
-		  } else{
-		  	echo json_encode( "error al actulizar el instructor". mysqli_error($conn));
-		  }
-
-	    // Cerrar la consulta preparada
-		  $stmt->close();
-		}
-
-
-   break;   
-   case "Consultar":
-		// Consulta SQL para seleccionar todos los instructores
-		$query = "SELECT * FROM reservas";
-		$result = mysqli_query($conn, $query);
-
-		// Verificar si la consulta fue exitosa
-		if ($result) {
-		    // Inicializar un array para almacenar los resultados
-		    $reservas = array();
-
-		    // Recorrer los resultados y almacenarlos en el array
-		    while ($row = mysqli_fetch_assoc($result)) {
-		        $reservas[] = $row;
-		    }
-
-		    // Liberar el resultado
-		    mysqli_free_result($result);
-		    // Devolver los resultados como JSON
-		    echo json_encode($reservas);
-		} else {
-		    // Si la consulta falla, mostrar un mensaje de error
-		    echo json_encode('Error al ejecutar la consulta: ' . mysqli_error($conn));
-		}
-   break;
-   case "autos":
-    // Consulta SQL para seleccionar todos los instructores
-    $query = "SELECT * FROM autos";
-    $result = mysqli_query($conn, $query);
-
-    // Verificar si la consulta fue exitosa
-    if ($result) {
-        // Inicializar un array para almacenar los resultados
-        $autos = array();
-
-        // Recorrer los resultados y almacenarlos en el array
-        while ($row = mysqli_fetch_assoc($result)) {
-            $autos[] = $row;
+            if ($stmt->execute()) {
+                // Después de insertar la reserva, actualiza la disponibilidad del carro
+                $sql_update_disponibilidad = "UPDATE autos SET disponibilidad = 0 WHERE id = ?";
+                $stmt_update_disponibilidad = $conn->prepare($sql_update_disponibilidad);
+                $stmt_update_disponibilidad->bind_param("i", $id_auto);
+                $stmt_update_disponibilidad->execute();
+                $stmt_update_disponibilidad->close();
+                echo json_encode("Reservación agregada correctamente");
+            } else {
+                echo json_encode("Error al agregar la reservación: " . $conn->error);
+            }
+        } else {
+            echo json_encode("El ID de la reservación ya existe en la base de datos por lo tanto no se agregó");
         }
+        $stmt->close();
+        break;
 
-        // Liberar el resultado
-        mysqli_free_result($result);
-        // Devolver los resultados como JSON
-        echo json_encode($autos);
-    } else {
-        // Si la consulta falla, mostrar un mensaje de error
-        echo json_encode('Error al ejecutar la consulta: ' . mysqli_error($conn));
-    }
-break;
-   case "Eliminar":
-		// Consulta SQL para eliminar el registro
-      $query = "DELETE FROM reservas WHERE id = " . $id;
+    case "Editar":
+        $query = "SELECT * FROM reservas WHERE id = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $num_rows = $result->num_rows;
 
-      // Ejecutar la consulta
-       $result = mysqli_query($conn, $query);
+        if ($num_rows >= 1) {
+            $sql = "UPDATE reservas SET id_auto = ?, fecha_inicio = ?, fecha_fin = ?, recoleccion = ?, devolucion = ?, pago = ? WHERE id = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->bind_param("issssdi", $id_auto, $fecha_inicio, $fecha_fin, $recoleccion, $devolucion, $pago, $id);
 
-      // Verificar si la consulta fue exitosa
-      if ($result) {
-        // Si la consulta fue exitosa, devolver un mensaje de éxito
-        echo json_encode( 'El registro se eliminó satisfactoriamente.');
-      } else {
-        // Si la consulta falla, devolver un mensaje de error
-        echo json_encode( 'Error al eliminar el registro: ' . mysqli_error($conn));
-      }
-   break;   
- }
+            if ($stmt->execute()) {
+                // Después de insertar la reserva, actualiza la disponibilidad del carro
+                $sql_update_disponibilidad = "UPDATE autos SET disponibilidad = 0 WHERE id = ?";
+                $stmt_update_disponibilidad = $conn->prepare($sql_update_disponibilidad);
+                $stmt_update_disponibilidad->bind_param("i", $id_auto);
+                $stmt_update_disponibilidad->execute();
+                $stmt_update_disponibilidad->close();
+                echo json_encode("Reservación actualizada correctamente");
+            } else {
+                echo json_encode("Error al actualizar la reservación: " . $stmt->error);
+            }
+        } else {
+            echo json_encode("La reservación no existe");
+        }
+        $stmt->close();
+        break;
+
+    case "Consultar":
+        $query = "SELECT * FROM reservas WHERE id_cliente = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result) {
+            $reservas = array();
+            while ($row = $result->fetch_assoc()) {
+                $reservas[] = $row;
+            }
+            echo json_encode($reservas);
+        } else {
+            echo json_encode('Error al ejecutar la consulta: ' . $conn->error);
+        }
+        $stmt->close();
+        break;
+
+    
+
+    case "Eliminar":
+        $sql = "DELETE FROM reservas WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $id);
+
+        if ($stmt->execute()) {
+            // Después de insertar la reserva, actualiza la disponibilidad del carro
+            $sql_update_disponibilidad = "UPDATE autos SET disponibilidad = 1 WHERE id = ?";
+            $stmt_update_disponibilidad = $conn->prepare($sql_update_disponibilidad);
+            $stmt_update_disponibilidad->bind_param("i", $id_auto);
+            $stmt_update_disponibilidad->execute();
+            $stmt_update_disponibilidad->close();
+            echo json_encode('La reservacion se eliminó satisfactoriamente.');
+        } else {
+            echo json_encode('Error al eliminar reservacion: ' . $stmt->error);
+        }
+        $stmt->close();
+        break;
+
+    default:
+        echo json_encode("Operación no válida");
+        break;
+}
+
 // Cerrar la conexión a la base de datos
-Closedb();
+Closedb($conn);
 
- 
 ?>
